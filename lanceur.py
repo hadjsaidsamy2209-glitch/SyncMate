@@ -21,7 +21,7 @@ if __name__ == "__main__":
     if config:
         serveur = config["serveur"]
         dossier = config["dossier"]
-        print(f"Configuration chargee : {serveur} | {dossier}")
+        print(f"Connexion a {serveur} | Dossier : {dossier}")
     else:
         serveur = choisir_serveur()
         dossier = choisir_dossier()
@@ -30,12 +30,11 @@ if __name__ == "__main__":
     chemin_base = os.path.join(dossier, "samyai.db")
     os.makedirs(dossier, exist_ok=True)
 
-    print(f"\nDemarrage de la synchronisation avec {serveur}...")
-    print(f"Dossier : {dossier}\n")
+    print(f"\nDemarrage — {serveur}\n")
 
     lancer(
-        serveur     = serveur,
-        dossier     = dossier,
-        chemin_base = chemin_base,
-        intervalle  = 60,
+        serveur=serveur,
+        dossier=dossier,
+        chemin_base=chemin_base,
+        intervalle=60,
     )

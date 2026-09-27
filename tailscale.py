@@ -1,9 +1,9 @@
 import subprocess
 import json
+from pathlib import Path
 
 
 def obtenir_machines():
-    """Appelle 'tailscale status --json' et retourne la liste des machines connectées."""
     try:
         resultat = subprocess.run(
             ["tailscale", "status", "--json"],
@@ -15,13 +15,11 @@ def obtenir_machines():
 
     machines = []
 
-    # La machine locale (Self)
     soi = donnees.get("Self", {})
     ips = soi.get("TailscaleIPs", [])
     if ips:
         machines.append({"nom": soi.get("HostName", "moi"), "ip": ips[0]})
 
-    # Les autres machines (Peer)
     for pair in donnees.get("Peer", {}).values():
         ips = pair.get("TailscaleIPs", [])
         if ips:
@@ -31,15 +29,13 @@ def obtenir_machines():
 
 
 def choisir_serveur():
-    """Affiche la liste des machines Tailscale et demande à l'utilisateur de choisir le serveur."""
     machines = obtenir_machines()
 
     if not machines:
-        print("Tailscale n'est pas actif ou aucune machine trouvee.")
-        print("Entrez l'adresse du serveur manuellement (ex: http://100.97.210.70:5000) :")
+        print("Tailscale inactif. Entrez l'adresse du serveur (ex: http://100.x.x.x:5000) :")
         return input("> ").strip()
 
-    print("\nMachines disponibles sur Tailscale :")
+    print("\nMachines disponibles :")
     for i, m in enumerate(machines, start=1):
         print(f"  [{i}] {m['nom']:<15} ({m['ip']})")
 
@@ -48,18 +44,16 @@ def choisir_serveur():
         if choix.isdigit() and 1 <= int(choix) <= len(machines):
             machine = machines[int(choix) - 1]
             return f"http://{machine['ip']}:5000"
-        print("Choix invalide, réessaie.")
+        print("Choix invalide.")
 
 
 def _dossier_defaut():
-    from pathlib import Path
-    return str(Path.home() / "SyncIA")
+    return str(Path.home() / "SyncMate")
 
 
 def choisir_dossier(defaut=None):
-    """Demande à l'utilisateur quel dossier synchroniser."""
     if defaut is None:
         defaut = _dossier_defaut()
-    print(f"\nQuel dossier synchroniser ? (Entree = {defaut}) : ", end="")
+    print(f"\nDossier a synchroniser (Entree = {defaut}) : ", end="")
     saisie = input().strip()
     return saisie if saisie else defaut
