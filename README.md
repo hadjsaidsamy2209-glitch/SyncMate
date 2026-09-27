@@ -1,7 +1,7 @@
 # SyncMate
 
-Synchronisation de fichiers bidirectionnelle entre PCs via Tailscale.  
-Aucun cloud, aucun serveur tiers — juste deux fichiers `.exe` et un réseau VPN privé.
+Synchronisation de fichiers bidirectionnelle entre machines via Tailscale.  
+Aucun cloud, aucun serveur tiers — entièrement privé, fonctionne partout dans le monde.
 
 ## Fonctionnalités
 
@@ -10,41 +10,42 @@ Aucun cloud, aucun serveur tiers — juste deux fichiers `.exe` et un réseau VP
 - **Résolution de conflits** automatique (version la plus récente gagne)
 - **Vérification d'intégrité** SHA-256 après chaque transfert
 - **Surveillance en temps réel** du dossier (watchdog)
+- **Configuration persistante** — répond aux questions une seule fois
 - **Cross-platform** — Windows, macOS, Linux
 
 ## Prérequis
 
-- [Tailscale](https://tailscale.com/) installé sur les deux machines
+- [Tailscale](https://tailscale.com/) installé sur toutes les machines
 
 ## Installation
 
-### PC serveur (PC fixe)
+### Machine serveur
 
-1. Télécharge `server.exe`
-2. Lance :
+Télécharge `server.exe` et lance :
+
 ```
-server.exe --dossier "C:\Users\SAMY\Desktop\SyncIA"
+server.exe --dossier "/chemin/vers/le/dossier"
 ```
 
-### PC client (PC portable)
+### Machine cliente
 
-1. Télécharge `lanceur.exe`
-2. Double-clique — il détecte automatiquement les machines Tailscale
-3. Choisis le PC serveur dans la liste
-4. La configuration est sauvegardée, les prochains lancements sont automatiques
+Télécharge `lanceur.exe` et lance-le. Au premier démarrage :
 
-## Démarrage automatique (Windows)
-
-Utilise le Planificateur de tâches ou place un raccourci dans `shell:startup` pour lancer les exes au démarrage sans fenêtre visible.
+1. Il affiche la liste des machines connectées sur ton réseau Tailscale
+2. Tu choisis quelle machine est le serveur
+3. Tu choisis le dossier à synchroniser
+4. La configuration est sauvegardée — les prochains lancements sont entièrement automatiques
 
 ## Architecture
 
 ```
-PC fixe (server.exe)        PC portable (lanceur.exe)
-       |                            |
-  Flask API :5000   <---Tailscale--->  sync toutes les 60s
-  SQLite + watcher                     SQLite + watcher
+Machine A (server.exe)         Machine B (lanceur.exe)
+        |                               |
+   Flask API :5000  <---Tailscale--->   sync toutes les 60s
+   SQLite + watcher                     SQLite + watcher
 ```
+
+Plusieurs machines clientes peuvent se connecter au même serveur.
 
 ## Stack technique
 
