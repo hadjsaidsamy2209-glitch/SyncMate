@@ -10,6 +10,19 @@ from main import scanner_et_synchroniser_bdd
 from client import cmd_telecharger, cmd_envoyer
 
 
+def notifier(titre, message):
+    try:
+        from plyer import notification
+        notification.notify(
+            title=titre,
+            message=message,
+            app_name="SyncMate",
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
 def lire_fichiers_locaux(chemin_base=NOM_BASE):
     connexion = sqlite3.connect(chemin_base, timeout=30)
     connexion.execute("PRAGMA journal_mode=WAL")
@@ -82,6 +95,9 @@ def synchroniser(serveur, dossier=None, chemin_base=NOM_BASE):
         print("Tout est deja synchronise.")
         return
 
+    telecharges = []
+    envoyes = []
+
     if actions["a_telecharger"]:
         print(f"\nFichiers a telecharger ({len(actions['a_telecharger'])}) :")
         for chemin in actions["a_telecharger"]:
@@ -96,6 +112,7 @@ def synchroniser(serveur, dossier=None, chemin_base=NOM_BASE):
                     os.utime(destination, (ts, ts))
                 except Exception:
                     pass
+            telecharges.append(Path(chemin).name)
 
     if actions["a_envoyer"]:
         print(f"\nFichiers a envoyer ({len(actions['a_envoyer'])}) :")
@@ -103,5 +120,16 @@ def synchroniser(serveur, dossier=None, chemin_base=NOM_BASE):
             print(f"  [ENVOYE] {chemin}")
             fichier_local = str(Path(dossier) / chemin) if dossier else chemin
             cmd_envoyer(serveur, fichier_local, chemin)
+            envoyes.append(Path(chemin).name)
+
+    if telecharges:
+        noms = ", ".join(telecharges[:3])
+        reste = f" +{len(telecharges) - 3}" if len(telecharges) > 3 else ""
+        notifier("Fichiers recus", f"{noms}{reste}")
+
+    if envoyes:
+        noms = ", ".join(envoyes[:3])
+        reste = f" +{len(envoyes) - 3}" if len(envoyes) > 3 else ""
+        notifier("Fichiers envoyes", f"{noms}{reste}")
 
     print("\nSynchronisation terminee.")

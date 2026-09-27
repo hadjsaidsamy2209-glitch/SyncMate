@@ -1,4 +1,6 @@
-import argparse
+import ctypes
+import os
+import sys
 import threading
 from pathlib import Path
 from flask import Flask, jsonify, send_file, request, abort
@@ -6,11 +8,53 @@ import sqlite3
 from main import calculer_hash, scanner_et_synchroniser_bdd
 from database import NOM_BASE, creer_base
 from watcher import demarrer
+from config import charger_config, sauvegarder_config, _chemin_config
 
 app = Flask(__name__)
 
 DOSSIER_SYNC = "./sync"
 CHEMIN_BASE = NOM_BASE
+
+
+def attacher_console():
+    if sys.platform != "win32":
+        return
+    try:
+        ctypes.windll.kernel32.AllocConsole()
+        sys.stdin = open("CONIN$", "r")
+        sys.stdout = open("CONOUT$", "w")
+        sys.stderr = open("CONOUT$", "w")
+    except Exception:
+        pass
+
+
+def detacher_console():
+    if sys.platform != "win32":
+        return
+    try:
+        ctypes.windll.kernel32.FreeConsole()
+        devnull = open(os.devnull, "w", encoding="utf-8", errors="ignore")
+        sys.stdout = devnull
+        sys.stderr = devnull
+        sys.stdin = open(os.devnull, "r")
+    except Exception:
+        pass
+
+
+def enregistrer_demarrage():
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+        return
+    try:
+        exe = sys.executable
+        startup = os.path.join(
+            os.environ["APPDATA"],
+            r"Microsoft\Windows\Start Menu\Programs\Startup"
+        )
+        vbs = os.path.join(startup, "SyncMateServer.vbs")
+        with open(vbs, "w") as f:
+            f.write(f'CreateObject("WScript.Shell").Run "{exe}", 0, False\n')
+    except Exception:
+        pass
 
 
 @app.route("/ping")
@@ -79,22 +123,35 @@ def recevoir():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dossier", default="./sync")
-    parser.add_argument("--port", default=5000, type=int)
-    parser.add_argument("--base", default=NOM_BASE)
-    args = parser.parse_args()
+    NOM_CFG = "server_config.json"
+    config = charger_config(NOM_CFG)
 
-    DOSSIER_SYNC = args.dossier
-    CHEMIN_BASE = args.base
+    if config:
+        dossier = config.get("dossier", "./sync")
+        devnull = open(os.devnull, "w", encoding="utf-8", errors="ignore")
+        sys.stdout = devnull
+        sys.stderr = devnull
+    else:
+        attacher_console()
+        defaut = str(Path.home() / "SyncMate")
+        print(f"\nDossier a synchroniser (Entree = {defaut}) : ", end="")
+        saisie = input().strip()
+        dossier = saisie if saisie else defaut
+        sauvegarder_config(dossier, "server", NOM_CFG)
+        enregistrer_demarrage()
+        print("\nDemarrage automatique configure.")
+        import time
+        time.sleep(2)
+        detacher_console()
 
+    DOSSIER_SYNC = dossier
+    CHEMIN_BASE = os.path.join(dossier, "samyai.db")
+
+    os.makedirs(DOSSIER_SYNC, exist_ok=True)
     creer_base(CHEMIN_BASE)
     scanner_et_synchroniser_bdd(DOSSIER_SYNC, chemin_base=CHEMIN_BASE)
 
     t = threading.Thread(target=demarrer, args=(DOSSIER_SYNC, CHEMIN_BASE), daemon=True)
     t.start()
 
-    print(f"Dossier : {DOSSIER_SYNC}")
-    print(f"Serveur : http://0.0.0.0:{args.port}")
-
-    app.run(host="0.0.0.0", port=args.port, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=False)
