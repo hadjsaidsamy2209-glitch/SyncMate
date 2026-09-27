@@ -12,15 +12,14 @@ def enregistrer_demarrage():
     if sys.platform != "win32" or not getattr(sys, "frozen", False):
         return
     try:
-        import winreg
         exe = sys.executable
-        cle = winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            r"Software\Microsoft\Windows\CurrentVersion\Run",
-            0, winreg.KEY_SET_VALUE
+        startup = os.path.join(
+            os.environ["APPDATA"],
+            r"Microsoft\Windows\Start Menu\Programs\Startup"
         )
-        winreg.SetValueEx(cle, "SyncMate", 0, winreg.REG_SZ, exe)
-        winreg.CloseKey(cle)
+        vbs = os.path.join(startup, "SyncMate.vbs")
+        with open(vbs, "w") as f:
+            f.write(f'CreateObject("WScript.Shell").Run "{exe}", 0, False\n')
     except Exception:
         pass
 
