@@ -4,11 +4,9 @@ NOM_BASE = "samyai.db"
 
 
 def creer_base(chemin_base=NOM_BASE):
-    """Crée la table fichiers si elle n'existe pas déjà."""
     connexion = sqlite3.connect(chemin_base, timeout=30)
     connexion.execute("PRAGMA journal_mode=WAL")
     curseur = connexion.cursor()
-
     curseur.execute("""
     CREATE TABLE IF NOT EXISTS fichiers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,11 +22,5 @@ def creer_base(chemin_base=NOM_BASE):
         derniere_sync_le TIMESTAMP
     )
     """)
-
     connexion.commit()
     connexion.close()
-
-
-if __name__ == "__main__":
-    creer_base()
-    print("Base de données initialisée.")
