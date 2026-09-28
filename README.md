@@ -1,64 +1,65 @@
 # SyncMate
 
-Synchronisation de fichiers bidirectionnelle entre machines via Tailscale.  
-Aucun cloud, aucun serveur tiers — entièrement privé, fonctionne partout dans le monde.
+Synchronisation bidirectionnelle de fichiers entre machines Windows via un partage SMB.
+Aucun cloud, aucun serveur tiers — entièrement privé.
+
+## Fonctionnement
+
+Un disque dur USB branché sur une box internet (ou un NAS) sert de stockage partagé SMB.
+Chaque machine exécute `lanceur.exe` qui synchronise un dossier local avec le partage toutes les 60 secondes.
+
+- À la maison : accès direct via le réseau local
+- En déplacement : accès via VPN (ex : WireGuard intégré à la box)
 
 ## Fonctionnalités
 
 - **Sync automatique** toutes les 60 secondes
-- **Détection automatique** des machines Tailscale au démarrage
-- **Résolution de conflits** automatique (version la plus récente gagne)
-- **Vérification d'intégrité** SHA-256 après chaque transfert
-- **Surveillance en temps réel** du dossier (watchdog)
-- **Configuration persistante** — répond aux questions une seule fois
-- **Cross-platform** — Windows, macOS, Linux
+- **Bidirectionnelle** — les modifications vont dans les deux sens
+- **Résolution de conflits** — la version la plus récente gagne
+- **Vérification d'intégrité** SHA-256 après chaque transfert (copie atomique)
+- **Surveillance en temps réel** du dossier local (watchdog)
+- **Propagation des suppressions** via un manifeste JSON sur le partage
+- **Configuration persistante** — répondre aux questions une seule fois
+- **Démarrage automatique** silencieux au boot (VBS dans le dossier Startup)
 
 ## Prérequis
 
-- [Tailscale](https://tailscale.com/) installé sur toutes les machines
+- Un partage SMB accessible (ex : disque USB sur une box, NAS, ou PC partagé)
+- Pour l'accès distant : un VPN configuré (WireGuard, OpenVPN, etc.)
 
 ## Installation
 
-### Machine serveur
-
-Télécharge `server.exe` et lance :
-
-```
-server.exe --dossier "/chemin/vers/le/dossier"
-```
-
-### Machine cliente
-
 Télécharge `lanceur.exe` et lance-le. Au premier démarrage :
 
-1. Il affiche la liste des machines connectées sur ton réseau Tailscale
-2. Tu choisis quelle machine est le serveur
-3. Tu choisis le dossier à synchroniser
-4. La configuration est sauvegardée — les prochains lancements sont entièrement automatiques
+1. Choisis le dossier local à synchroniser (défaut : `%USERPROFILE%\SyncMate`)
+2. Indique le chemin SMB du partage (ex : `\\192.168.1.1\MonDisque\SyncMate`)
+3. La configuration est sauvegardée et le démarrage automatique est configuré
+4. Les prochains lancements sont entièrement automatiques et silencieux
 
 ## Architecture
 
 ```
-Machine A (server.exe)         Machine B (lanceur.exe)
-        |                               |
-   Flask API :5000  <---Tailscale--->   sync toutes les 60s
-   SQLite + watcher                     SQLite + watcher
+PC A                           Stockage SMB                    PC B
+(réseau local)                 (disque USB / NAS)              (VPN ou LAN)
+    |                               |                               |
+lanceur.exe                   Partage SMB                     lanceur.exe
+SQLite + watcher          \\adresse\partage\...               SQLite + watcher
+    |                               |                               |
+    +----------- shutil.copy2 ------+----------- shutil.copy2 ------+
+                    toutes les 60 secondes
 ```
-
-Plusieurs machines clientes peuvent se connecter au même serveur.
 
 ## Stack technique
 
-- **Flask** — API REST sur le serveur
-- **SQLite** — base de données locale (WAL mode)
+- **shutil.copy2** — copie de fichiers avec préservation des métadonnées
+- **SQLite** — base de données locale par machine (mode WAL)
 - **watchdog** — surveillance du dossier en temps réel
-- **Tailscale** — VPN mesh pour la connexion entre machines
 - **PyInstaller** — packaging en `.exe` standalone
 
 ## Tests
 
 ```
-python -m pytest
+python -m pytest tests/
 ```
 
 ## Licence

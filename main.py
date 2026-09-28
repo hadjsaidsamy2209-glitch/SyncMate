@@ -11,7 +11,7 @@ def calculer_hash(fichier):
     h = hashlib.sha256()
     try:
         with open(fichier, "rb") as f:
-            while morceau := f.read(4096):
+            while morceau := f.read(65536):
                 h.update(morceau)
         return h.hexdigest()
     except FileNotFoundError:
@@ -41,10 +41,12 @@ def scanner_et_synchroniser_bdd(dossier, chemin_base=NOM_BASE, appareil="PC"):
     for fichier in racine.rglob("*"):
         if not fichier.is_file():
             continue
+        if fichier.is_symlink():
+            continue
         if fichier.suffix in EXTENSIONS_IGNOREES:
             continue
 
-        chemin_relatif = str(fichier.relative_to(racine))
+        chemin_relatif = fichier.relative_to(racine).as_posix()
         fichiers_actuels.add(chemin_relatif)
 
         stats = fichier.stat()

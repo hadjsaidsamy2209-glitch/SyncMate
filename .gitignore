@@ -11,3 +11,12 @@ dist/
 *.spec
 .env
 test/
+sync/
+deps/
+*.syncmate_tmp
+_syncmate_deletions.json
+.syncmate_lock
+.syncmate_test
+config.json
+server_config.json
+.pytest_cache/

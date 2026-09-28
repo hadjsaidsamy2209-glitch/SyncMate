@@ -1,36 +1,44 @@
 import time
+import threading
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from main import scanner_et_synchroniser_bdd
 from database import NOM_BASE
+
+sync_en_cours = False
 
 
 class SyncHandler(FileSystemEventHandler):
     def __init__(self, dossier, chemin_base=NOM_BASE):
         self.dossier = dossier
         self.chemin_base = chemin_base
+        self._timer = None
+        self._lock = threading.Lock()
 
-    def _synchroniser(self, src_path):
+    def _planifier_scan(self):
+        with self._lock:
+            if self._timer:
+                self._timer.cancel()
+            self._timer = threading.Timer(5, self._executer_scan)
+            self._timer.start()
+
+    def _executer_scan(self):
+        if sync_en_cours:
+            return
         try:
             scanner_et_synchroniser_bdd(self.dossier, chemin_base=self.chemin_base)
         except Exception:
             pass
 
-    def on_created(self, event):
-        if not event.is_directory:
-            self._synchroniser(event.src_path)
-
-    def on_modified(self, event):
-        if not event.is_directory:
-            self._synchroniser(event.src_path)
-
-    def on_deleted(self, event):
-        if not event.is_directory:
-            self._synchroniser(event.src_path)
-
-    def on_moved(self, event):
-        if not event.is_directory:
-            self._synchroniser(event.src_path)
+    def on_any_event(self, event):
+        if event.is_directory:
+            return
+        if sync_en_cours:
+            return
+        src = getattr(event, "src_path", "")
+        if ".syncmate_tmp" in src:
+            return
+        self._planifier_scan()
 
 
 def demarrer(dossier="./sync", chemin_base=NOM_BASE):
